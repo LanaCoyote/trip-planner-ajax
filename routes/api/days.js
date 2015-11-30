@@ -34,24 +34,36 @@ router.post('/', function( req, res, next ) {
 });
 
 // PUT /:day_num/hotel
-router.put('/:day_num/hotel/', function( req, res, next ) {
-  Day.update({number: req.params.day_num}, {hotel: req.body.hotel}).then(function(info) {
-    res.json(info);
+router.put('/:day_num/hotels/', function( req, res, next ) {
+  Day.update({number: req.params.day_num}, {hotel: req.body.hotels}).then(function(info) {
+    return Hotel.findOne({_id: req.body.hotels}).exec();
+  }).then( function( hotel ) {
+    res.json( hotel );
   });
 });
 
 // PUT /:day_num/restaurants
 router.put('/:day_num/restaurants/', function( req, res, next ) {
-  Day.update({number: req.params.day_num}, {restaurants: req.body.restaurants}).then(function( info ) {
-    res.json(info);
-  });  
+  Day.findOne({number: req.params.day_num}).exec().then( function( day ) {
+    day.restaurants.push( req.body.restaurants );
+    return day.save();
+  }).then( function() {
+    return Restaurant.findOne({_id: req.body.restaurants}).exec();
+  }).then( function( restaurant ) {
+    res.json( restaurant )
+  });
 });
 
 // PUT /:day_num/activities
 router.put('/:day_num/activities/', function( req, res, next ) {
-  Day.update({number: req.params.day_num}, {activities: req.body.activities}).then(function( info ) {
-    res.json(info);
-  });  
+  Day.findOne({number: req.params.day_num}).exec().then( function( day ) {
+    day.activities.push( req.body.activities );
+    return day.save();
+  }).then( function() {
+    return Activity.findOne({_id: req.body.activities }).exec();
+  }).then( function( activity ) {
+    res.json( activity )
+  });
 });
 
 // DELETE to delete days
@@ -59,12 +71,44 @@ router.put('/:day_num/activities/', function( req, res, next ) {
 router.delete('/:day_num', function( req, res, next ) {
   Day.remove({number: req.params.day_num}).exec().then(function( info ) {
     res.json(info);
-    return Day.find({number: {$ge:req.params.day_num}})
+    return Day.find({number: {$gte: req.params.day_num}}).exec()
   }).then(function(days) {
     days.forEach(function(day) {
       day.number--;
       day.save();
     });
+  });
+});
+
+// DELETE /:day_num/hotels
+router.delete('/:day_num/hotels', function( req, res, next ) {
+  Day.findOne({number: req.params.day_num}).populate('restaurants activities').exec().then( function( day ) {
+    day.hotel = null;
+    return day.save();
+  }).then(function( day ) {
+    res.json( day );
+  });
+});
+
+// DELETE /:day_num/restaurants
+router.delete('/:day_num/restaurants', function( req, res, next ) {
+  Day.findOne({number: req.params.day_num}).populate('hotel restaurants activities').exec().then( function( day ) {
+    var rest_idx = day.restaurants.map(function(id){ return id.toString() }).indexOf( req.body.restaurants );
+    day.restaurants.splice( rest_idx, 1 );
+    return day.save();
+  }).then( function( day ) {
+    res.json( day );
+  });
+});
+
+// DELETE /:day_num/activities
+router.delete('/:day_num/activities', function( req, res, next ) {
+  Day.findOne({number: req.params.day_num}).populate('hotel restaurants activities').exec().then( function( day ) {
+    var rest_idx = day.activities.map(function(id){ return id.toString() }).indexOf( req.body.activities );
+    day.activities.splice( rest_idx, 1 );
+    return day.save();
+  }).then( function( day ) {
+    res.json( day );
   });
 });
 
