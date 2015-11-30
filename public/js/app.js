@@ -76,15 +76,19 @@ $(function () {
         return $('<button class="btn btn-circle day-btn"></button>').text(dayNum);
     };
 
+    var getPlaces = function(day) {
+        return [day.hotel].concat(day.restaurants, day.activities).filter(function(a) {return !!a});
+    };
+
     var reset = function () {
 
-        var dayPlaces = days[currentDay - 1];
+        var dayPlaces = getPlaces(days[currentDay - 1]);
         if (!dayPlaces) return;
 
         $placeLists.empty();
 
         dayPlaces.forEach(function (place) {
-            place.marker.setMap(null);
+            if(place.marker) place.marker.setMap(null);
         });
 
     };
@@ -105,7 +109,7 @@ $(function () {
     var mapFit = function () {
 
         var bounds = new google.maps.LatLngBounds();
-        var currentPlaces = days[currentDay - 1];
+        var currentPlaces = getPlaces(days[currentDay - 1]);
 
         currentPlaces.forEach(function (place) {
             bounds.extend(place.marker.position);
@@ -115,31 +119,54 @@ $(function () {
 
     };
 
+    var addPlace = function (placeObj, type) {
+        $('#' + type + '-list').find('ul').append(createItineraryItem(placeObj.name));
+
+        if (placeObj.marker) placeObj.marker.setMap(null);
+        placeObj.marker = drawLocation(map, placeObj.place[0].location, {icon: placeMapIcons[type]});
+        placeObj.marker.setMap(map);
+    };
+
     var setDay = function (dayNum) {
 
         if (dayNum > days.length || dayNum < 0) {
             return;
         }
 
-        var placesForThisDay = days[dayNum - 1];
-        var $dayButtons = $('.day-btn').not('.add-day');
+        $.ajax({
+            method: 'get',
+            url: '/api/' + dayNum.toString(),
+            dataType: 'json'
+        }).then(function(today) {
+            days[dayNum - 1] = today;
+            var $dayButtons = $('.day-btn').not('.add-day');
 
-        reset();
+            reset();
 
-        currentDay = dayNum;
+            currentDay = dayNum;
 
-        placesForThisDay.forEach(function (place) {
-            $('#' + place.section + '-list').find('ul').append(createItineraryItem(place.place.name));
-            place.marker.setMap(map);
-        });
+            var $hotelList = $('#hotels-list'),
+                $restaurantList = $('#restaurants-list'),
+                $activityList = $('#activities-list');
 
-        $dayButtons.removeClass('current-day');
-        $dayButtons.eq(dayNum - 1).addClass('current-day');
+            if (today.hotel) addPlace(today.hotel, 'hotels');
 
-        $dayTitle.children('span').text('Day ' + dayNum.toString());
+            today.restaurants.forEach(function(restaurant) {
+                addPlace(restaurant, 'restaurants')
+            });
 
-        mapFit();
+            today.activities.forEach(function(activity) {
+                addPlace(activity, 'activities');
+            });
 
+            $dayButtons.removeClass('current-day');
+            $dayButtons.eq(dayNum - 1).addClass('current-day');
+
+            $dayTitle.children('span').text('Day ' + dayNum.toString());
+
+            mapFit();
+
+        })
     };
 
     $addPlaceButton.on('click', function () {
