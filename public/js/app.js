@@ -1,10 +1,22 @@
+var days = [
+    []
+];
+
+$.ajax({
+    method:"GET",
+    url:"/api",
+    dataType:"json",
+    success:function( response ) {
+        days = response.length ? response : [[]];
+    },
+    error:function( response ) {
+        console.error( response.body );
+    }
+}).then( function(){
+
 $(function () {
 
     var map = initialize_gmaps();
-
-    var days = [
-        []
-    ];
 
     var currentDay = 1;
 
@@ -185,5 +197,9 @@ $(function () {
 
     });
 
+    setDayButtons();
+    setDay(1);
+
 });
 
+});
