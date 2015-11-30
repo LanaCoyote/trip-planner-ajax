@@ -77,6 +77,7 @@ $(function () {
     };
 
     var getPlaces = function(day) {
+        if (!day) return [];
         return [day.hotel].concat(day.restaurants, day.activities).filter(function(a) {return !!a});
     };
 
@@ -103,7 +104,7 @@ $(function () {
 
         setDayButtons();
         setDay(1);
-
+        return true;
     };
 
     var mapFit = function () {
@@ -260,13 +261,23 @@ $(function () {
     });
 
     $dayTitle.children('button').on('click', function () {
-
-        removeDay(currentDay);
+        if (days.length === 1) return;
+        $.ajax({
+            method: "DELETE",
+            url: '/api/' + currentDay,
+            dataType: 'json'
+        }).then(function(response){
+            removeDay(currentDay);
+            if (currentDay === days.length) {
+                currentDay--;
+            }
+        });
 
     });
 
     setDayButtons();
     setDay(1);
+
 
 });
 
